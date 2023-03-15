@@ -1,4 +1,6 @@
 # Oni Register API
+*Note: ( WIP: Still building )*
+
 Oni Register API is a simple node/mongo backend service for handling user access and management.
 
 Below is an outline of services offered:
