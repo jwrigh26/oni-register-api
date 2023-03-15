@@ -25,7 +25,7 @@ Below is an outline of services offered:
 - 2FA or two-factor authentication
 
 ## Startup
-- TODO: Write startup
+- TODO: Write startup<br/>*Note: Will be adding once inital app is complete*
 
 
 
