@@ -1,3 +1,4 @@
+const argon2 = require('argon2');
 const colors = require('colors');
 const connectDB = require('./config/db');
 const cors = require('cors');
@@ -12,6 +13,9 @@ const rateLimit = require('express-rate-limit');
 const xss = require('xss-clean');
 
 const { env } = require('./constants');
+
+
+const jwt = require('jsonwebtoken');
 
 // eslint-disable-next-line no-process-env
 process.env.TZ = 'UTC';
@@ -59,7 +63,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(errorHandler);
 
-const PORT = env.PORT || 5000;
+const PORT = env.PORT || 3000;
 
 const server = app.listen(PORT, () => {
   console.log(
@@ -73,3 +77,5 @@ process.on('unhandledRejection', (err) => {
   // close server & exit process
   server.close(() => process.exit(1));
 });
+
+console.log('Begin JWT Tutorial'.green.bold);
