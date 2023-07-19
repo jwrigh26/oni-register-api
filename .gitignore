@@ -105,3 +105,6 @@ dist
 # TernJS port file
 .tern-port
 
+# _database folder for MongoDB
+_data/
+

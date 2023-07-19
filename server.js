@@ -1,4 +1,7 @@
-const argon2 = require('argon2');
+// Bring in environment variables first thing
+const { env } = require('./constants');
+
+// Import dependencies
 const colors = require('colors');
 const connectDB = require('./config/db');
 const cors = require('cors');
@@ -6,16 +9,16 @@ const errorHandler = require('./middleware/error');
 const express = require('express');
 const helmet = require('helmet');
 const hpp = require('hpp');
+const jwt = require('jsonwebtoken');
 const mongoSanitize = require('express-mongo-sanitize');
 const morgan = require('morgan');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss-clean');
 
-const { env } = require('./constants');
+// Load in passport strategies
+require('./strategies/passport.jwt');
 
-
-const jwt = require('jsonwebtoken');
 
 // eslint-disable-next-line no-process-env
 process.env.TZ = 'UTC';
@@ -23,7 +26,8 @@ process.env.TZ = 'UTC';
 // Connect to database
 connectDB();
 
-// TODO: Create routes
+// Route files
+const auth = require('./routes/auth.route');
 
 // Initialize express app
 const app = express();
@@ -61,21 +65,22 @@ app.use(cors());
 // Set static folder
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Mount routes
+app.use('/api/v1/auth', auth);
+
 app.use(errorHandler);
 
-const PORT = env.PORT || 3000;
-
-const server = app.listen(PORT, () => {
+const server = app.listen(env.PORT, () => {
   console.log(
-    `Server running in ${env.NODE_ENV} mode on port ${PORT}`.yellow.bold,
+    `Server running in ${env.NODE_ENV} mode on port ${env.PORT}`.yellow.bold,
   );
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.log(`Error: ${err.message}`.red);
+  console.log(`Unhandled Rejection Error: ${err.message}`.red);
   // close server & exit process
   server.close(() => process.exit(1));
 });
 
-console.log('Begin JWT Tutorial'.green.bold);
+

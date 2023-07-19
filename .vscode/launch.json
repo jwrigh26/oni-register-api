@@ -7,14 +7,12 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "JWTSecret",
-      "runtimeExecutable": "${workspaceRoot}/node_modules/nodemon/bin/nodemon.js",
-      "args": ["${workspaceRoot}/generateJWTSecret.js"],
-      "restart": true,
-      "stopOnEntry": false,
-      "runtimeArgs": ["--exec", "babel-node"],
-      "sourceMaps": true,
-      "console": "integratedTerminal"
+      "name": "Seed Data",
+      "envFile": "${workspaceFolder}/.env",
+      "program": "${workspaceRoot}/seeder.js",
+      "args": ["-s"],
+      "cwd": "${workspaceRoot}",
+      "outputCapture": "std",
     },
     {
       "type": "node",
@@ -51,6 +49,18 @@
       "cwd": "${workspaceRoot}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
-    }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "JWTSecret",
+      "runtimeExecutable": "${workspaceRoot}/node_modules/nodemon/bin/nodemon.js",
+      "args": ["${workspaceRoot}/generateJWTSecret.js"],
+      "restart": true,
+      "stopOnEntry": false,
+      "runtimeArgs": ["--exec", "babel-node"],
+      "sourceMaps": true,
+      "console": "integratedTerminal"
+    },
   ]
 }

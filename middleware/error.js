@@ -12,18 +12,20 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
+    console.log('Possible Mongoose bad ObjectId', err);
     const message = `Resource not found`;
     error = new ErrorResponse(message, 404);
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const message = 'Duplicate field value entered';
+    const message = 'Mongoose Duplicate field value entered';
     error = new ErrorResponse(message, 400);
   }
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
+    console.log('Mongoose ValidationError', err);
     const message = Object.values(err.errors).map(val => val.message);
     error = new ErrorResponse(message, 400);
   }
@@ -35,6 +37,3 @@ const errorHandler = (err, req, res, next) => {
 };
 
 module.exports = errorHandler;
-
-
-//Session time has expired, please login to restart your session
