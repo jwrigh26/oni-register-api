@@ -66,7 +66,8 @@ router.get(
     //   success: true,
     //   user: req.user,
     // });
-    res.redirect(200, '/test');
+    // Need to come up with a JWT token for the user
+    res.redirect(302, '/api/v1/auth/test');
   },
 );
 
