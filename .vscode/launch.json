@@ -7,16 +7,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Seed Data",
-      "envFile": "${workspaceFolder}/.env",
-      "program": "${workspaceRoot}/seeder.js",
-      "args": ["-s"],
-      "cwd": "${workspaceRoot}",
-      "outputCapture": "std",
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Dev",
       "envFile": "${workspaceFolder}/.env",
       "runtimeExecutable": "${workspaceRoot}/node_modules/nodemon/bin/nodemon.js",
@@ -26,6 +16,16 @@
       "runtimeArgs": ["--exec", "babel-node"],
       "sourceMaps": true,
       "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Seed Data",
+      "envFile": "${workspaceFolder}/.env",
+      "program": "${workspaceRoot}/seeder.js",
+      "args": ["-s"],
+      "cwd": "${workspaceRoot}",
+      "outputCapture": "std",
     },
     {
       "name": "Jest Debug Tests Single Run",

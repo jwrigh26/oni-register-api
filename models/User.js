@@ -27,6 +27,11 @@ const UserSchema = new mongoose.Schema(
       default:
         '$argon2id$v=19$m=65536,t=3,p=4$eK8Eysrk0HjvzaB1sm6mUQ$bWTuPJJKhEVTG+e4e+f8ZAmil1FldYMNawcFL1d9MrI', //   P@ssw0rd123
     },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

@@ -11,6 +11,12 @@ const env = Object.freeze({
   POSTMARK_TOKEN: process.env.POSTMARK_TOKEN,
   FROM_NAME: process.env.FROM_NAME,
   FROM_EMAIL: process.env.FROM_EMAIL,
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,
+  SMTP_EMAIL: process.env.SMTP_EMAIL,
+  SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 });
 
 module.exports = {

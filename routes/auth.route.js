@@ -35,7 +35,6 @@ router.post(
       return next(new ErrorResponse('Invalid credentials', 401));
     }
 
-
     // Check if password matches
     const isMatch = await user.matchPassword(user.password, password);
 
@@ -46,19 +45,53 @@ router.post(
 
     console.log('User logged in successfully');
 
-
     sendTokenResponse(user, 200, res);
   }),
 );
 
-router.get('/me', passport.authenticate('jwt', { session: false }), asyncHandler(async (req, res, next) => {
-  // user is already available in req due to the passport.js middleware
-  const user = req.user;
-  res.status(200).json({
-    success: true,
-    user,
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: '/login',
+    scope: ['profile', 'email'],
+    session: false,
+  }),
+  (req, res) => {
+    // sendTokenResponse(req.user, 200, res);
+    // TODO: Make this work
+    console.log('User logged in successfully');
+    // res.status(200).json({
+    //   success: true,
+    //   user: req.user,
+    // });
+    res.redirect(200, '/test');
+  },
+);
+
+// create a route to show a simple message
+router.get('/test', (req, res) => {
+  res.json({
+    message: 'Hello World',
   });
-}));
+});
+
+// @desc      Show current user
+// @route     GET /api/v1/auth/me
+// @access    Private
+router.get(
+  '/me',
+  passport.authenticate('jwt', { session: false }),
+  asyncHandler(async (req, res, next) => {
+    // user is already available in req due to the passport.js middleware
+    const user = req.user;
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  }),
+);
 
 module.exports = router;
 

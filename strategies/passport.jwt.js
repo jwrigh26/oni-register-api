@@ -1,7 +1,6 @@
 const { env } = require('../constants');
 const passport = require('passport');
 const passportJWT = require('passport-jwt');
-
 const User = require('../models/User');
 
 // Configure passport with the JWT strategy
