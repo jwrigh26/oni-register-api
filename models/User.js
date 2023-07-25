@@ -69,6 +69,15 @@ UserSchema.methods.getSignedJwtToken = function () {
   });
 };
 
+// Sign Public JWT and return
+// This method generates a public signed json web token and returns it.
+// using the JWT_PUBLIC_SECRET and JWT_EXPIRE values from the .env file.
+UserSchema.methods.getPublicSignedJwtToken = function () {
+  return jwt.sign({ id: this._id, email: this.email }, env.JWT_SECRET, {
+    expiresIn: env.JWT_EXPIRE,
+  });
+};
+
 // Match user entered password to hashed password in database
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   const enteredPasswordHashed = await argon2.hash(enteredPassword);

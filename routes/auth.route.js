@@ -6,17 +6,7 @@ const { csrf, csrfCheck } = require('../middleware/csrf');
 const passport = require('passport');
 const router = express.Router();
 const User = require('../models/User');
-
-// When a user is created, the password is hashed and stored in the database
-// along side the email and other user details.
-// const passwordHashed = await argon2.hash(password);
-
-// Get the token from the cookie
-// const token = req.cookies.token;
-
-// import helper components
 const ErrorResponse = require('../components/ErrorResponse');
-const { set } = require('date-fns');
 
 // @desc      Login in a user via email and password
 // @route     POST /api/v1/auth/login
@@ -48,16 +38,38 @@ router.post(
       return next(new ErrorResponse('Invalid credentials', 401));
     }
 
-    console.log('User logged in successfully');
-
     // Send a payload with the user object
     sendTokenResponse(user, 200, res, {
       email: user.email,
-      csrf: req?.local?.csrf,
     });
   }),
 );
 
+// @desc      Register a new user
+// @route     POST /api/v1/auth/register
+// @access    Public
+router.post(
+  '/register',
+  csrf,
+  asyncHandler(async (req, res, next) => {
+    const { email, password } = req.body;
+
+    const user = await User.create({
+      email,
+      password,
+    });
+
+    sendTokenResponse(user, 200, res, {
+      email: user.email,
+    });
+  }),
+);
+
+// ----------------------- GOOGLE AUTH ----------------------- //
+
+// @desc      Register or login a new user via google
+// @route     POST /api/v1/auth/google
+// @access    Public
 router.get(
   '/google',
   passport.authenticate('google', { scope: ['profile', 'email'] }),
@@ -79,23 +91,39 @@ router.get(
     // send redirect instead of json payload
     sendTokenResponse(req.user, 200, res, {
       redirect: '/api/v1/auth/google/protected',
-      csrf: req.local.csrf,
     });
   },
 );
 
-// No csrf check here because we're redirecting to a protected route
-// but don't have a csrf token yet
-// One idea is to get the csrf token from the login OG screen
-// and pass squirrel it away in memory. Then when can use it after the redirect
+// @desc      The redirect site for google login
+//            Note: No csrf check here because we're redirecting to a protected route
+// @route     GET /api/v1/auth/google/protected
+// @access    Private
 router.get(
   '/google/protected',
   passport.authenticate('jwt', { session: false }),
   asyncHandler(async (req, res) => {
-    const { expires } = req.cookies._csrf;
-
     res.json({
       message: `Hello Google User: ${req?.user?.email}. Welcome from the server!`,
+    });
+  }),
+);
+
+// ----------------------- USER ROUTES ----------------------- //
+
+// @desc      CSRF token request. This should be made after successfully logging in
+//            CSRF token will be needed for all subsequent requests to the server
+// @route     POST /api/v1/auth/request-csrftoken
+// @access    Private
+router.post(
+  '/request-csrftoken',
+  passport.authenticate('jwt', { session: false }),
+  asyncHandler(async (req, res) => {
+    console.log('--- CSRF token requested ---');
+    console.log('req', req.cookies?._csrf?.token);
+    res.status(200).json({
+      success: true,
+      csrf: req.cookies?._csrf?.token,
     });
   }),
 );
@@ -136,19 +164,27 @@ module.exports = router;
 const sendTokenResponse = async (user, statusCode, res, payload = {}) => {
   // Create token
   const token = await user.getSignedJwtToken();
+  const publicToken = await user.getPublicSignedJwtToken();
 
-  // Set cookie to expire in 30 days
-  // Same as token expiration
-  const options = {
+  // Set cookie options for both public and private cookies
+  // private cookies are server read only
+  const privateOptions = {
     // Expires is deprecated, use maxAge instead
     // https://mrcoles.com/blog/cookies-max-age-vs-expires/
     // expires: new Date(Date.now() + env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
-    maxAge: 60 * 1000,
     httpOnly: true,
+    maxAge: env.JWT_COOKIE_EXPIRE * 60 * 1000,
+  };
+
+  const publicOptions = {
+    maxAge: env.JWT_COOKIE_EXPIRE * 60 * 1000,
+    domain: env.DEV_DOMAIN, // host (NOT DOMAIN, NOT HTTP:// OR HTTPS://)!
+    sameSite: 'strict',
   };
 
   if (env.NODE_ENV === 'production') {
-    options.secure = true;
+    privateOptions.secure = true;
+    publicOptions.secure = true;
   }
 
   // If a redirect is provided, send the token as a cookie and redirect
@@ -156,7 +192,8 @@ const sendTokenResponse = async (user, statusCode, res, payload = {}) => {
     // Get the CSRF token from the request
     return res
       .status(statusCode)
-      .cookie('oni-token', token, options)
+      .cookie('oni-token', token, privateOptions)
+      .cookie('oni-public-token', publicToken, publicOptions)
       .redirect(payload.redirect);
   }
 
@@ -166,10 +203,10 @@ const sendTokenResponse = async (user, statusCode, res, payload = {}) => {
   // over https.
   return res
     .status(statusCode)
-    .cookie('oni-token', token, options)
+    .cookie('oni-token', token, privateOptions)
+    .cookie('oni-public-token', publicToken, publicOptions)
     .json({
       success: true,
-      csrf: payload.csrf, // calling this out specifically so that we know we're passing it back
       ...payload,
     });
 };

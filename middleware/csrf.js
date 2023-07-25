@@ -1,26 +1,26 @@
-const crypto = require('crypto');
+const { env } = require('../constants');
 const { isBefore } = require('date-fns');
+const crypto = require('crypto');
 
 const csrf = (req, res, next) => {
-  // Create req.local as an empty object if it's undefined
-  req.local = req.local || {};
   // Set CSRF token in a cookie if not already present
   if (!req.cookies._csrf) {
     // Generate a random token
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 60 * 1000);
-    res.cookie(
-      '_csrf',
-      { token, expires },
-      { httpOnly: true, maxAge: 60 * 1000 },
-    );
+    const expires = new Date(Date.now() + env.JWT_COOKIE_EXPIRE * 60 * 1000);
 
-    // Set the CSRF token in the request
-    req.local.csrf = token;
-    console.log('--- CSRF token set ---', req.local.csrf);
-  } else {
-    // Set the CSRF token in the request
-    req.local.csrf = req.cookies._csrf.token;
+    const options = {
+      domain: env.DEV_DOMAIN, // host (NOT DOMAIN, NOT HTTP:// OR HTTPS://)!
+      httpOnly: true,
+      maxAge: env.JWT_COOKIE_EXPIRE * 60 * 1000,
+      sameSite: 'strict',
+    };
+
+    if (env.NODE_ENV === 'production') {
+      options.secure = true;
+    }
+
+    res.cookie('_csrf', { token, expires }, options);
   }
   return next();
 };

@@ -18,6 +18,9 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Mongoose duplicate key
+  // Catches things like duplicate email
+  // This is good for when you have a unique field in your schema
+  // like in creating a user, you have a unique email field
   if (err.code === 11000) {
     const message = 'Mongoose Duplicate field value entered';
     error = new ErrorResponse(message, 400);
