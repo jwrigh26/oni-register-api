@@ -30,7 +30,7 @@ const UserSchema = new mongoose.Schema(
     googleId: {
       type: String,
       unique: true,
-      sparse: true,
+      sparse: true, // only add if it exists
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
@@ -40,6 +40,7 @@ const UserSchema = new mongoose.Schema(
 
 // --------- Helper methods used below --------- //
 
+// Used in matchResetToken and generateResetPasswordToken
 const generateResetHash = (resetToken) =>
   crypto.createHash('sha256').update(resetToken).digest('hex');
 

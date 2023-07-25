@@ -23,12 +23,12 @@ passport.use(
           console.log('User created:', user);
           return done(null, user);
         }
-        console.log('User found/created:', user);
+        console.log('User found:', user);
         return done(null, user);
       } catch (err) {
         console.error('Error finding/creating user:', err);
         return done(err, false);
       }
-    }
-  )
+    },
+  ),
 );

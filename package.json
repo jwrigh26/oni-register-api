@@ -52,6 +52,7 @@
     "argon2": "^0.30.3",
     "bson-objectid": "^2.0.4",
     "colors": "^1.4.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",
     "dotenv": "^16.3.1",

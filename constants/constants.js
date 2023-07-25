@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const env = Object.freeze({
+  DEV_FRONTEND_URL: process.env.DEV_FRONTEND_URL,
   JWT_COOKIE_EXPIRE: process.env.JWT_COOKIE_EXPIRE,
   JWT_EXPIRE: process.env.JWT_EXPIRE,
   JWT_SECRET: process.env.JWT_SECRET,

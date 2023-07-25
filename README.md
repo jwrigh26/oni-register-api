@@ -27,29 +27,37 @@ Below is an outline of services offered:
 ## Startup
 - TODO: Write startup<br/>*Note: Will be adding once inital app is complete*
 
-
-const express = require('express');
-const passport = require('passport');
-const jwt = require('jsonwebtoken');
-
-const router = express.Router();
-
-// Route for Google OAuth2.0 authentication
-router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-// Callback route for Google OAuth2.0 authentication
-router.get('/auth/google/callback', passport.authenticate('google'), (req, res) => {
-  // Generate a JWT token for the authenticated user
-  const token = jwt.sign({ userId: req.user._id }, 'YOUR_JWT_SECRET', { expiresIn: '1h' }); // Replace with your actual JWT secret
-  res.json({ token });
-});
-
-module.exports = router;
+## What if port already listening
+lsof -i :3000
+kill PID#
 
 
-module.exports = router;
+Follow up on CSRF
 
+// Fetching data from the server with CSRF token
+const csrfToken = '...'; // Replace with your actual way of getting the CSRF token
+const url = '/api/data';
 
+fetch(url, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': csrfToken, // Include the CSRF token in the header
+  },
+  body: JSON.stringify({ /* Your request data */ }),
+})
+  .then((response) => response.json())
+  .then((data) => {
+    // Process the response data
+  })
+  .catch((error) => {
+    // Handle errors
+  });
+
+ // .redirect(`${redirect}?_csrf=${encodeURIComponent(csrfToken)}`);
+
+// How to get it from req to pass onto sendToken payload
+// csrfToken: req.csrfToken(),
 
 
 

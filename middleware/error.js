@@ -30,6 +30,12 @@ const errorHandler = (err, req, res, next) => {
     error = new ErrorResponse(message, 400);
   }
 
+  if (err.code === 'EBADCSRFTOKEN' || err.message === 'Invalid CSRF token') {
+    console.log('Invalid CSRF token.', err);
+    // CSRF token validation failed
+    error = new ErrorResponse('Invalid CSRF token', 403);
+  }
+
   res.status(error.statusCode || 500).json({
     success: false,
     error: error.message || 'Server Error',

@@ -3,15 +3,17 @@ const { env } = require('./constants');
 
 // Import dependencies
 const colors = require('colors');
+const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const cors = require('cors');
+const csrf = require('./middleware/csrf').csrf;
 const errorHandler = require('./middleware/error');
 const express = require('express');
 const helmet = require('helmet');
 const hpp = require('hpp');
-const jwt = require('jsonwebtoken');
 const mongoSanitize = require('express-mongo-sanitize');
 const morgan = require('morgan');
+const passport = require('passport');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss-clean');
@@ -38,8 +40,14 @@ if (env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+
 // Body parser
 app.use(express.json());
+// Cookies
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+// Passport middleware
+app.use(passport.initialize());
 
 // Sanitize data
 app.use(mongoSanitize());
@@ -61,7 +69,15 @@ app.use(limiter);
 app.use(hpp());
 
 // Enable CORS
-app.use(cors());
+app.use(cors({
+  origin: env.DEV_FRONTEND_URL, // url of the client making the http requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true, // allow session cookies to be sent to/from client
+  // some legacy browsers (IE11, various SmartTVs) choke on 204
+  // if so uncomment and set to 200
+  // optionsSuccessStatus: 200,
+}));
+
 
 // Set static folder
 app.use(express.static(path.join(__dirname, 'public')));
