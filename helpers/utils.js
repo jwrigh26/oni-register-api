@@ -1,4 +1,5 @@
 /* eslint-disable valid-jsdoc */
+const validateDate = require('date-fns').isDate;
 
 // Import and use like:
 //    import { hasValue } from 'helpers/utils';
@@ -91,9 +92,12 @@ function trimSpaces(value) {
 }
 
 function isDate(value) {
-  return (
-    !isNil(value) && value instanceof Date && !Number.isNaN(value.valueOf())
-  );
+    return validateDate(value);
+
+  // Old way. Trying out date-fns for now.
+  // return (
+  //   !isNil(value) && value instanceof Date && !Number.isNaN(value.valueOf())
+  // );
 }
 
 function isValidSearchParam(value) {

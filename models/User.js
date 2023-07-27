@@ -1,4 +1,5 @@
 const { env } = require('../constants');
+const { isDate } = require('../helpers/utils');
 const argon2 = require('argon2');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -31,6 +32,18 @@ const UserSchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true, // only add if it exists
+    },
+    // Used to check if user has registered. If null, user has not registered
+    // and cannot access the app. They need to wait for a confirmation email.
+    registered: {
+      type: Date,
+      defaul: null,
+      min: '2000-01-01',
+    },
+    role: {
+      type: String,
+      values: ['user', 'admin'],
+      default: 'user',
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
@@ -73,9 +86,18 @@ UserSchema.methods.getSignedJwtToken = function () {
 // This method generates a public signed json web token and returns it.
 // using the JWT_PUBLIC_SECRET and JWT_EXPIRE values from the .env file.
 UserSchema.methods.getPublicSignedJwtToken = function () {
-  return jwt.sign({ id: this._id, email: this.email }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRE,
-  });
+  return jwt.sign(
+    {
+      id: this._id,
+      email: this.email,
+      registered: this.registered,
+      role: this.role,
+    },
+    env.JWT_PUBLIC_SECRET,
+    {
+      expiresIn: env.JWT_EXPIRE,
+    },
+  );
 };
 
 // Match user entered password to hashed password in database
@@ -108,6 +130,11 @@ UserSchema.methods.generateResetPasswordToken = function () {
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
 
   return resetToken;
+};
+
+// Check if registered is set
+UserSchema.methods.isRegistered = (user) => {
+  return user.registered !== null && isDate(user.registered);
 };
 
 module.exports = mongoose.model('User', UserSchema);

@@ -45,7 +45,34 @@ router.post(
   }),
 );
 
-// @desc      Register a new user
+// @desc     Logout a user
+// @route    GET /api/v1/auth/logout
+// @access   Public
+router.get(
+  '/logout',
+  asyncHandler(async (req, res) => {
+    // expire the cookies
+    res.cookie('oni-token', '', {
+      expires: new Date(Date.now() + 3 * 1000),
+      httpOnly: true,
+    });
+    res.cookie('oni-public-token', '', {
+      expires: new Date(Date.now() + 3 * 1000),
+      httpOnly: true,
+    });
+    res.cookie('_csrf', '', {
+      expires: new Date(Date.now() + 3 * 1000),
+      httpOnly: true,
+    });
+
+    // return a success response with generic logout message
+    res
+      .status(200)
+      .json({ success: true, message: 'User logged out successfully.' });
+  }),
+);
+
+// @desc      Register a new user. The user account is created. But then we need to send a confirmation email
 // @route     POST /api/v1/auth/register
 // @access    Public
 router.post(
@@ -58,6 +85,8 @@ router.post(
       email,
       password,
     });
+
+    // TODO: Send registration notification email or check whitelist
 
     sendTokenResponse(user, 200, res, {
       email: user.email,
@@ -88,6 +117,8 @@ router.get(
     session: false,
   }),
   (req, res) => {
+    // TODO: Send registration notification email or check whitelist
+
     // send redirect instead of json payload
     sendTokenResponse(req.user, 200, res, {
       redirect: '/api/v1/auth/google/protected',
@@ -130,11 +161,11 @@ router.post(
 
 // @desc      Show current user
 // @route     GET /api/v1/auth/me
-// @access    Private
+// @access    Private with CSRF
 router.get(
   '/me',
-  csrfCheck,
   passport.authenticate('jwt', { session: false }),
+  csrfCheck,
   asyncHandler(async (req, res) => {
     // user is already available in req due to the passport.js middleware
     const user = req.user;

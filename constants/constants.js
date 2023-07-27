@@ -7,6 +7,7 @@ const env = Object.freeze({
   JWT_COOKIE_EXPIRE: process.env.JWT_COOKIE_EXPIRE,
   JWT_EXPIRE: process.env.JWT_EXPIRE,
   JWT_SECRET: process.env.JWT_SECRET,
+  JWT_PUBLIC_SECRET: process.env.JWT_PUBLIC_SECRET,
   MONGO_URI: process.env.MONGO_URI,
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
