@@ -32,32 +32,7 @@ lsof -i :3000
 kill PID#
 
 
-Follow up on CSRF
 
-// Fetching data from the server with CSRF token
-const csrfToken = '...'; // Replace with your actual way of getting the CSRF token
-const url = '/api/data';
-
-fetch(url, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-CSRF-Token': csrfToken, // Include the CSRF token in the header
-  },
-  body: JSON.stringify({ /* Your request data */ }),
-})
-  .then((response) => response.json())
-  .then((data) => {
-    // Process the response data
-  })
-  .catch((error) => {
-    // Handle errors
-  });
-
- // .redirect(`${redirect}?_csrf=${encodeURIComponent(csrfToken)}`);
-
-// How to get it from req to pass onto sendToken payload
-// csrfToken: req.csrfToken(),
 
 
 

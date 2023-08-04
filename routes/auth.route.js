@@ -1,11 +1,14 @@
 const { env } = require('../constants');
 const { hasValue } = require('../helpers/utils');
+const { sendEmailTest } = require('../helpers/email');
 const asyncHandler = require('../middleware/async');
 const express = require('express');
 const { csrf, csrfCheck } = require('../middleware/csrf');
+const registerService = require('../services/register.service');
 const passport = require('passport');
 const router = express.Router();
 const User = require('../models/User');
+const WhitelistAccount = require('../models/WhitelistAccount');
 const ErrorResponse = require('../components/ErrorResponse');
 
 // @desc      Login in a user via email and password
@@ -37,6 +40,14 @@ router.post(
       console.log('Invalid credentials', user.password, password);
       return next(new ErrorResponse('Invalid credentials', 401));
     }
+
+    // Send test email
+    const emailData = {
+      to: 'luie@mcduck.com',
+    };
+
+    // This is asynchronous, so we don't need to wait for it to finish
+    sendEmailTest(emailData);
 
     // Send a payload with the user object
     sendTokenResponse(user, 200, res, {
@@ -72,7 +83,10 @@ router.get(
   }),
 );
 
-// @desc      Register a new user. The user account is created. But then we need to send a confirmation email
+// @desc      Register a new user. The user account is created.
+//            But then we need to send a confirmation email along with a
+//            notification email to the admin, but if the user is whitelisted
+//            we can skip this step and just send the response back.
 // @route     POST /api/v1/auth/register
 // @access    Public
 router.post(
@@ -81,12 +95,21 @@ router.post(
   asyncHandler(async (req, res, next) => {
     const { email, password } = req.body;
 
-    const user = await User.create({
-      email,
-      password,
-    });
+    // Create the user
+    // Pass in the email and password as an object
+    // At this stage they are not yet registered
+    const user = await registerService.createUser({ email, password });
+    const isWhitelisted = await registerService.checkWhitelist(email);
 
-    // TODO: Send registration notification email or check whitelist
+    // Check if email is in out whitelist
+    // If not found then proceed with sending two emails
+    // 1. Send a confirmation email to the user stating they are in review
+    // 2. Send a notification email to the admin
+    // These will happen asynchronously to not block the request
+    if (!isWhitelisted) {
+      registerService.sendRegistrationPendingEmail(email);
+      registerService.sendRegistrationRequestToAdminEmail(email);
+    }
 
     sendTokenResponse(user, 200, res, {
       email: user.email,

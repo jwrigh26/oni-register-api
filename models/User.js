@@ -33,20 +33,28 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // only add if it exists
     },
-    // Used to check if user has registered. If null, user has not registered
+    reset: {
+      token: String,
+      expires: Date,
+    },
+    // Used to check if user has registered. If false and no date, user has not registered
     // and cannot access the app. They need to wait for a confirmation email.
-    registered: {
-      type: Date,
-      defaul: null,
-      min: '2000-01-01',
+    registration: {
+      date: {
+        type: Date,
+        defaul: null,
+        min: '2000-01-01',
+      },
+      registered: {
+        type: Boolean,
+        default: false,
+      },
     },
     role: {
       type: String,
       values: ['user', 'admin'],
       default: 'user',
     },
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
   },
   { timestamps: true },
 );
