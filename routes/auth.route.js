@@ -41,17 +41,13 @@ router.post(
       return next(new ErrorResponse('Invalid credentials', 401));
     }
 
-    // Send test email
-    const emailData = {
-      to: 'luie@mcduck.com',
-    };
-
-    // This is asynchronous, so we don't need to wait for it to finish
-    sendEmailTest(emailData);
+    // Last check to see if the user is registered
+    const isRegistered = await registerService.checkUserRegistration(email);
 
     // Send a payload with the user object
     sendTokenResponse(user, 200, res, {
       email: user.email,
+      registered: isRegistered,
     });
   }),
 );
@@ -100,6 +96,13 @@ router.post(
     // At this stage they are not yet registered
     const user = await registerService.createUser({ email, password });
     const isWhitelisted = await registerService.checkWhitelist(email);
+
+    // TODO if whitelist is enabled, update the user account to be active
+    // by setting the register.registered to true
+    if (isWhitelisted) {
+      // Update the user account to be active
+      await registerService.updateUserRegistration(email);
+    }
 
     // Check if email is in out whitelist
     // If not found then proceed with sending two emails

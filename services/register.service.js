@@ -42,6 +42,37 @@ async function checkWhitelist(email) {
 }
 
 /**
+ * Checks if a user is registered.
+ *
+ * @param {string} email - The email address of the user.
+ * @returns {Promise<boolean>} A Promise that resolves with a boolean indicating if the user is registered.
+ * @throws {ErrorResponse} If there was an error checking the user's registration.
+ */
+async function checkUserRegistration(email) {
+  let user;
+  try {
+    user = await User.findOne({ email }, { 'registration.registered': 1 });
+  } catch (err) {
+    const message = 'Unable to check user registration';
+    throw new ErrorResponse(message, 400);
+  }
+
+  if (!user) {
+    const message = 'User not found';
+    throw new ErrorResponse(message, 404);
+  }
+
+  // If not registered, then return false
+  // But also throw an error if the user is not registered
+  if (!user.registration.registered) {
+    const message = 'User is not registered';
+    throw new ErrorResponse(message, 400);
+  }
+
+  return user.registration.registered;
+}
+
+/**
  * Creates a new user with the specified email and password.
  *
  * @param {Object} options - The options object.
@@ -188,10 +219,42 @@ function sendRegistrationRequestToAdminEmail(email) {
   });
 }
 
+/**
+ * Updates a user's registration.
+ *
+ * @param {string} email - The email address of the user.
+ * @param {boolean} [registered=true] - The registration status of the user. Defaults to true.
+ * @returns {Promise<Object>} A Promise that resolves with the updated user object.
+ * @throws {ErrorResponse} If there was an error updating the user.
+ */
+async function updateUserRegistration(email, registered = true) {
+  const date = new Date();
+  let user;
+  try {
+    user = await User.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          'registration.registered': registered,
+          'registration.date': date,
+        },
+      },
+      { new: true },
+    );
+  } catch (err) {
+    const message = 'Unable to update user registration';
+    throw new ErrorResponse(message, 400);
+  }
+
+  return user;
+}
+
 module.exports = {
   checkWhitelist,
+  checkUserRegistration,
   createUser,
   sendRegistrationPendingEmail,
   sendRegistrationCompleteEmail,
   sendRegistrationRequestToAdminEmail,
+  updateUserRegistration,
 };
