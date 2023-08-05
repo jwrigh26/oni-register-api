@@ -1,10 +1,11 @@
 const { env } = require('../constants');
 const { hasValue } = require('../helpers/utils');
 const { sendEmailTest } = require('../helpers/email');
-const asyncHandler = require('../middleware/async');
-const express = require('express');
 const { csrf, csrfCheck } = require('../middleware/csrf');
+const { checkAdminRole } = require('../middleware/permissions');
+const asyncHandler = require('../middleware/async');
 const authServices = require('../services/auth.service');
+const express = require('express');
 const registerService = require('../services/register.service');
 const passport = require('passport');
 const router = express.Router();
@@ -26,7 +27,10 @@ router.post(
     const user = await authServices.loginUser({ email, password }, next);
 
     // Last check to see if the user is registered
-    const isRegistered = await registerService.checkUserRegistration(email);
+    const isRegistered = await registerService.checkUserRegistration(
+      email,
+      next,
+    );
 
     // Send a payload with the user object
     authServices.sendTokenResponse(user, 200, res, {
@@ -78,15 +82,27 @@ router.post(
     const { email, password } = req.body;
 
     // Create the user
-    // Pass in the email and password as an object
+    // Pass in the email and password as a user object.
     // At this stage they are not yet registered
-    const user = await registerService.createUser({ email, password });
-    const isWhitelisted = await registerService.checkWhitelist(email);
+    const user = await registerService.createUser({ email, password }, next);
+    // Check if email is in out whitelist to short circuit the process
+    const isWhitelisted = await registerService.checkWhitelist(email, next);
 
-    // by setting the register.registered to true
     if (isWhitelisted) {
-      // Update the user account to be active
-      await registerService.updateUserRegistration(email);
+      // Update the user account to be registered
+      // This will set the user.registration.registered to true
+      await registerService.updateUserRegistration({ email }, next);
+      // Need to generate a token for registration confirmation
+      // Make a signed JWT token with the email sigend by the public secret key
+      // Side-effect: This will update the user object with a registration token
+      const token = await registerService.getRegistrationTokenByEmail(
+        email,
+        next,
+      );
+      // Send the email to the user.
+      // They will use this email token to confirm their registration
+      // This will happen asynchronously to not block the request
+      registerService.sendRegistrationConfirmationEmail({ email, token }, next);
     }
 
     // Check if email is in out whitelist
@@ -95,12 +111,62 @@ router.post(
     // 2. Send a notification email to the admin
     // These will happen asynchronously to not block the request
     if (!isWhitelisted) {
-      registerService.sendRegistrationPendingEmail(email);
-      registerService.sendRegistrationRequestToAdminEmail(email);
+      registerService.sendRegistrationPendingEmail(email, next);
+      registerService.sendRegistrationRequestToAdminEmail(email, next);
     }
 
     authServices.sendTokenResponse(user, 201, res, {
       email: user.email,
+    });
+  }),
+);
+
+// REGISTER Approve ( USED BY ADMIN )
+// @desc     As an Admin send a registration confirmation email to a user
+//           that has a url to click on containing a token
+// @route    POST /api/v1/auth/register/confirm
+// @access   Private
+router.post(
+  '/register/approve',
+  // passport.authenticate('jwt', { session: false }),
+  // csrfCheck,
+  // checkAdminRole,
+  asyncHandler(async (req, res, next) => {
+    const { email } = req.body;
+    // Check if the user is already registered
+    const isRegistered = await registerService.checkUserRegistration(
+      email,
+      next,
+    );
+    // If the user is already registered then send a message back
+    if (isRegistered) {
+      return res.status(200).json({
+        success: true,
+        message: `User ${email} is already registered.`,
+      });
+    }
+
+    // If the user is not registered let's register them
+    // Update the user account to be registered
+    // This will set the user.registration.registered to true
+    await registerService.updateUserRegistration({ email }, next);
+    // Need to generate a token for registration confirmation
+    // Make a signed JWT token with the email sigend by the public secret key
+    // Side-effect: This will update the user object with a registration token
+    const token = await registerService.getRegistrationTokenByEmail(
+      email,
+      next,
+    );
+    // Send the email to the user.
+    // They will use this email token to confirm their registration
+    // This will happen asynchronously to not block the request
+    registerService.sendRegistrationConfirmationEmail({ email, token }, next);
+
+    // Send a success response
+    res.status(200).json({
+      success: true,
+      message: `Registration confirmation email sent to ${email}`,
+      token,
     });
   }),
 );
@@ -114,53 +180,13 @@ router.get(
   passport.authenticate('register', { session: false }),
   asyncHandler(async (req, res) => {
     // Need to do some clean up here.
+    // The token has already been removed.
+    // Need to login and stuff.
 
     res.status(200).json({
       success: true,
       Greeting: `Hello Confirmed User: ${req?.user?.email}. Welcome from the server!`,
       user: req.user,
-    });
-  }),
-);
-
-// REGISTER CONFIRM ( USED BY ADMIN )
-// @desc     As an Admin send a registration confirmation email to a user
-//           that has a url to click on containing a token
-// @route    POST /api/v1/auth/register/confirm
-// @access   Private
-router.post(
-  '/register/confirm',
-  // passport.authenticate('jwt', { session: false }),
-  // csrfCheck,
-  asyncHandler(async (req, res, next) => {
-    const { email } = req.body;
-    // Check if the user is already registered
-    const isRegistered = await registerService.checkUserRegistration(
-      email,
-      next,
-    );
-    // If the user is already registered then send a message back
-    if (isRegistered) {
-      console.log('isRegistered', isRegistered);
-      return res.status(200).json({
-        success: true,
-        message: `User ${email} is already registered.`,
-      });
-    }
-
-    // If the user is not registered let's register them
-    // Update the user account to be active
-    await registerService.updateUserRegistration({email}, next);
-
-    // Make a signed JWT token with the email sigend by the public secret key
-    const token = await registerService.getSignedToken(email, next);
-    // Send the email
-    // registerService.sendRegistrationCompleteEmail(email, token);
-    // Send a success response
-    res.status(200).json({
-      success: true,
-      message: `Registration confirmation email sent to ${email}`,
-      token,
     });
   }),
 );
@@ -183,68 +209,5 @@ router.post(
   }),
 );
 
-// @desc      Show current user
-// @route     GET /api/v1/auth/me
-// @access    Private with CSRF
-router.get(
-  '/me',
-  passport.authenticate('jwt', { session: false }),
-  csrfCheck,
-  asyncHandler(async (req, res) => {
-    // user is already available in req due to the passport.js middleware
-    const user = req.user;
-    res.status(200).json({
-      success: true,
-      email: user.email,
-    });
-  }),
-);
-
-// ----------------------- NOT USED -------------------------- //
-// ----------------------- GOOGLE AUTH ----------------------- //
-
-// @desc      Register or login a new user via google
-// @route     POST /api/v1/auth/google
-// @access    Public
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] }),
-);
-
-// @desc     Ligin in / Register with Google.
-//           If user exists, login, otherwise register
-// @route    GET /api/v1/auth/google
-// @access   Public
-router.get(
-  '/google/callback',
-  csrf,
-  passport.authenticate('google', {
-    failureRedirect: '/login',
-    scope: ['profile', 'email'],
-    session: false,
-  }),
-  (req, res) => {
-    // TODO: Send registration notification email or check whitelist
-
-    // send redirect instead of json payload
-    authServices.sendTokenResponse(req.user, 200, res, {
-      redirect: '/api/v1/auth/google/protected',
-    });
-  },
-);
-
-// @desc      The redirect site for google login
-//            Note: No csrf check here because we're redirecting to a protected route
-// @route     GET /api/v1/auth/google/protected
-// @access    Private
-router.get(
-  '/google/protected',
-  passport.authenticate('jwt', { session: false }),
-  asyncHandler(async (req, res) => {
-    res.json({
-      message: `Hello Google User: ${req?.user?.email}. Welcome from the server!`,
-    });
-  }),
-);
 
 module.exports = router;

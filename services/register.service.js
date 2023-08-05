@@ -5,19 +5,6 @@ const User = require('../models/User');
 const WhitelistAccount = require('../models/WhitelistAccount');
 const ErrorResponse = require('../components/ErrorResponse');
 
-/*
- * This file contains the `checkWhitelist` and `createUser` methods for registering new users.
- *
- * `checkWhitelist(email)`: This method checks if the specified email is whitelisted.
- *                          It takes an email address as a parameter and returns a Promise that resolves with a
- *                          boolean value indicating whether the email is whitelisted.
- *
- * `createUser(options)`: This method creates a new user with the specified email and password.
- *                        It takes an options object as a parameter that contains the email and password properties.
- *                        It returns a Promise that resolves with the newly created user object. If there was an error
- *                        creating the user, it returns a next with an `ErrorResponse` using a 400 status code.
- */
-
 // Not a public method, so we don't need to export it
 // This is the mailer transport that will be used to send emails
 const transporter = nodemailer.createTransport({
@@ -34,11 +21,16 @@ const transporter = nodemailer.createTransport({
  * Checks if the specified email is whitelisted.
  *
  * @param {string} email - The email address to check.
+ * @param {function} next - The next middleware function to call.
  * @returns {Promise<boolean>} A Promise that resolves with a boolean value indicating whether the email is whitelisted.
  */
-async function checkWhitelist(email) {
+async function checkWhitelist(email, next) {
+  try {
   const foundInWhitelist = await WhitelistAccount.isWhitelisted(email);
   return foundInWhitelist;
+  } catch (err) {
+    return next(new ErrorResponse('Unable to check whitelist', 401));
+  }
 }
 
 /**
@@ -69,9 +61,9 @@ async function checkUserRegistration(email, next) {
  * CREATE USER
  * Creates a new user with the specified email and password.
  *
- * @param {Object} options - The options object.
- * @param {string} options.email - The email address of the user.
- * @param {string} options.password - The password of the user.
+ * @param {Object} user - The user object.
+ * @param {string} user.email - The email address of the user.
+ * @param {string} user.password - The password of the user.
  * @param {function} next - The next middleware function to call.
  * @returns {Promise<Object>} A Promise that resolves with the newly created user object.
  */
@@ -98,7 +90,7 @@ async function createUser({ email, password }, next) {
  * @returns {Promise<string>} A Promise that resolves with the signed JWT token.
  * @param {function} next - The next middleware function to call.
  */
-async function getSignedToken(email, next) {
+async function getRegistrationTokenByEmail(email, next) {
   const user = await User.findOne({ email }, { _id: 1, email: 1 });
   const token = user?.getRegisteredJwtToken();
   if (!token) {
@@ -114,6 +106,18 @@ async function getSignedToken(email, next) {
  * SEND REGISTRATION EMAIL PENDING
  * Sends a registration pending email to the specified email address.
  *
+ * @param {Object} registration - The registration object containing the email and registration status of the user. Registration is true by default.
+ * @param {string} registration.email - The email address of the user.
+ * @param {string} registration.token - The token that was previously created by calling: getRegistrationTokenByEmail.
+ * @param {function} next - The next middleware function to call.
+ */
+function sendRegistrationConfirmationEmail({ email, token }, next) {
+  // TODO: Send registration complete email
+}
+
+/**
+ * SEND REGISTRATION EMAIL PENDING
+ * Sends a registration pending email to the specified email address.
  * @param {string} email - The email address to send the email to.
  * @param {function} next - The next middleware function to call.
  */
@@ -165,10 +169,6 @@ function sendRegistrationPendingEmail(email, next) {
     }
     console.log('Email sent:', info.messageId);
   });
-}
-
-function sendRegistrationCompleteEmail(email) {
-  // TODO: Send registration complete email
 }
 
 /**
@@ -237,7 +237,7 @@ function sendRegistrationRequestToAdminEmail(email, next) {
  * UPDATE USER REGISTRATION
  * Updates a user's registration.
  *
- * @param {Object} registration - The registration object containing the email and registration status of the user.
+ * @param {Object} registration - The registration object containing the email and registration status of the user. Registration is true by default.
  * @param {string} registration.email - The email address of the user.
  * @param {boolean} [registration.registered=true] - The registration status of the user. Defaults to true.
  * @param {function} next - The next middleware function to call.
@@ -270,9 +270,36 @@ module.exports = {
   checkWhitelist,
   checkUserRegistration,
   createUser,
-  getSignedToken,
+  getRegistrationTokenByEmail,
+  sendRegistrationConfirmationEmail,
   sendRegistrationPendingEmail,
-  sendRegistrationCompleteEmail,
   sendRegistrationRequestToAdminEmail,
   updateUserRegistration,
 };
+
+/**
+ * Steps for user registration that happen if whitelist is enabled
+ * Or if whitelist is disabled and user is not already registered
+ * and the admin APPROVES the user
+ *
+ * updateUserRegistration -- sets user.registration.registered to true
+ * getRegistrationTokenByEmail -- makes a signed token with the user's email
+ *                                and updates the user registration.token
+ *
+ * sendRegistrationConfirmationEmail -- Takes email and token
+ *
+ * When the user clicks the link in the email it calls /register/confirm
+ * At the point middleware for passport.authenticate('register', { session: false })
+ * is called.
+ *
+ * Extracts the token forom the url and validates it
+ * Finds user from the payload.email
+ * If not user is found then it returns a 400 error
+ * If user is not registered then it returns a 400 error
+ * If the token from the url doesn't match eht user.registraction.token then it returns a 400 error
+ * If it passes all of this stuff then...
+ *
+ * Remove token from user registration object
+ * Save the user
+ * Send the user object along the middleware chain
+ */

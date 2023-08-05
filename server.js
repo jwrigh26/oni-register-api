@@ -6,7 +6,6 @@ const colors = require('colors');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const cors = require('cors');
-const csrf = require('./middleware/csrf').csrf;
 const errorHandler = require('./middleware/error');
 const express = require('express');
 const helmet = require('helmet');
@@ -31,7 +30,8 @@ process.env.TZ = 'UTC';
 connectDB();
 
 // Route files
-const auth = require('./routes/auth.route');
+const authRoute = require('./routes/auth.route');
+const userRoute = require('./routes/user.route');
 
 // Initialize express app
 const app = express();
@@ -84,7 +84,8 @@ app.use(cors({
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Mount routes
-app.use('/api/v1/auth', auth);
+app.use('/api/v1/auth', authRoute);
+app.use('/api/v1/user', userRoute);
 
 app.use(errorHandler);
 
