@@ -7,12 +7,12 @@ const csrf = (req, res, next) => {
   if (!req.cookies._csrf) {
     // Generate a random token
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + env.JWT_COOKIE_EXPIRE * 60 * 1000);
+    const expires = new Date(Date.now() + env.JWT_EXPIRE_COOKIE * 60 * 1000);
 
     const options = {
       domain: env.DEV_DOMAIN, // host (NOT DOMAIN, NOT HTTP:// OR HTTPS://)!
       httpOnly: true,
-      maxAge: env.JWT_COOKIE_EXPIRE * 60 * 1000,
+      maxAge: env.JWT_EXPIRE_COOKIE * 60 * 1000,
       sameSite: 'strict',
     };
 

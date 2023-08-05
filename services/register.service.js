@@ -15,7 +15,7 @@ const ErrorResponse = require('../components/ErrorResponse');
  * `createUser(options)`: This method creates a new user with the specified email and password.
  *                        It takes an options object as a parameter that contains the email and password properties.
  *                        It returns a Promise that resolves with the newly created user object. If there was an error
- *                        creating the user, it throws an `ErrorResponse` with a 400 status code.
+ *                        creating the user, it returns a next with an `ErrorResponse` using a 400 status code.
  */
 
 // Not a public method, so we don't need to export it
@@ -45,43 +45,37 @@ async function checkWhitelist(email) {
  * Checks if a user is registered.
  *
  * @param {string} email - The email address of the user.
+ * @param {function} next - The next middleware function to call.
  * @returns {Promise<boolean>} A Promise that resolves with a boolean indicating if the user is registered.
- * @throws {ErrorResponse} If there was an error checking the user's registration.
  */
-async function checkUserRegistration(email) {
+async function checkUserRegistration(email, next) {
   let user;
   try {
     user = await User.findOne({ email }, { 'registration.registered': 1 });
   } catch (err) {
-    const message = 'Unable to check user registration';
-    throw new ErrorResponse(message, 400);
+    return next(new ErrorResponse('Unable to check user registration', 401));
   }
 
   if (!user) {
     const message = 'User not found';
-    throw new ErrorResponse(message, 404);
-  }
-
-  // If not registered, then return false
-  // But also throw an error if the user is not registered
-  if (!user.registration.registered) {
-    const message = 'User is not registered';
-    throw new ErrorResponse(message, 400);
+    console.log(message);
+    return next(new ErrorResponse(message, 404));
   }
 
   return user.registration.registered;
 }
 
 /**
+ * CREATE USER
  * Creates a new user with the specified email and password.
  *
  * @param {Object} options - The options object.
  * @param {string} options.email - The email address of the user.
  * @param {string} options.password - The password of the user.
+ * @param {function} next - The next middleware function to call.
  * @returns {Promise<Object>} A Promise that resolves with the newly created user object.
- * @throws {ErrorResponse} If there was an error creating the user.
  */
-async function createUser({ email, password }) {
+async function createUser({ email, password }, next) {
   let user;
   try {
     user = await User.create({
@@ -90,19 +84,40 @@ async function createUser({ email, password }) {
     });
   } catch (err) {
     const message = 'Unable to create user';
-    throw new ErrorResponse(message, 400);
+    return next(new ErrorResponse(message, 400));
   }
 
   return user;
 }
 
 /**
+ * GET SIGNED TOKEN FOR REGISTRATION
+ * Gets a signed JWT token for the specified email address and updates the user's registration status with the token.
+ *
+ * @param {string} email - The email address of the user.
+ * @returns {Promise<string>} A Promise that resolves with the signed JWT token.
+ * @param {function} next - The next middleware function to call.
+ */
+async function getSignedToken(email, next) {
+  const user = await User.findOne({ email }, { _id: 1, email: 1 });
+  const token = user?.getRegisteredJwtToken();
+  if (!token) {
+    const message = 'Unable to get token';
+    console.log(message);
+    return next(new ErrorResponse(message, 400));
+  }
+  await User.updateOne({ _id: user._id }, { 'registration.token': token });
+  return token;
+}
+
+/**
+ * SEND REGISTRATION EMAIL PENDING
  * Sends a registration pending email to the specified email address.
  *
  * @param {string} email - The email address to send the email to.
- * @throws {ErrorResponse} If there was an error sending the email.
+ * @param {function} next - The next middleware function to call.
  */
-function sendRegistrationPendingEmail(email) {
+function sendRegistrationPendingEmail(email, next) {
   const emailTemplateString = `
     <mjml>
       <mj-body>
@@ -146,8 +161,7 @@ function sendRegistrationPendingEmail(email) {
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
       console.log('Error sending email:', error);
-      throw new ErrorResponse('Error sending email!', 400, error);
-      // You might want to handle errors here and respond to the client accordingly
+      return next(new ErrorResponse('Error sending email!', 400, error));
     }
     console.log('Email sent:', info.messageId);
   });
@@ -158,12 +172,13 @@ function sendRegistrationCompleteEmail(email) {
 }
 
 /**
+ * SEND REGISTRATION REQUEST TO ADMIN EMAIL
  * Sends a registration request email to the admin.
  *
  * @param {string} email - The email address of the user.
- * @throws {ErrorResponse} If there was an error sending the email.
+ * @param {function} next - The next middleware function to call.
  */
-function sendRegistrationRequestToAdminEmail(email) {
+function sendRegistrationRequestToAdminEmail(email, next) {
   const loginUrl = `${env.DEV_FRONTEND_URL}/admin/login`;
 
   const emailTemplateString = `
@@ -212,22 +227,23 @@ function sendRegistrationRequestToAdminEmail(email) {
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
       console.log('Error sending email:', error);
-      throw new ErrorResponse('Error sending email!', 400, error);
-      // You might want to handle errors here and respond to the client accordingly
+      return next(new ErrorResponse('Error sending email!', 400, error));
     }
     console.log('Email sent:', info.messageId);
   });
 }
 
 /**
+ * UPDATE USER REGISTRATION
  * Updates a user's registration.
  *
- * @param {string} email - The email address of the user.
- * @param {boolean} [registered=true] - The registration status of the user. Defaults to true.
+ * @param {Object} registration - The registration object containing the email and registration status of the user.
+ * @param {string} registration.email - The email address of the user.
+ * @param {boolean} [registration.registered=true] - The registration status of the user. Defaults to true.
+ * @param {function} next - The next middleware function to call.
  * @returns {Promise<Object>} A Promise that resolves with the updated user object.
- * @throws {ErrorResponse} If there was an error updating the user.
  */
-async function updateUserRegistration(email, registered = true) {
+async function updateUserRegistration({ email, registered = true }, next) {
   const date = new Date();
   let user;
   try {
@@ -242,8 +258,9 @@ async function updateUserRegistration(email, registered = true) {
       { new: true },
     );
   } catch (err) {
+    console.log('Error updating user registration:', err);
     const message = 'Unable to update user registration';
-    throw new ErrorResponse(message, 400);
+    return next(new ErrorResponse(message, 400));
   }
 
   return user;
@@ -253,6 +270,7 @@ module.exports = {
   checkWhitelist,
   checkUserRegistration,
   createUser,
+  getSignedToken,
   sendRegistrationPendingEmail,
   sendRegistrationCompleteEmail,
   sendRegistrationRequestToAdminEmail,

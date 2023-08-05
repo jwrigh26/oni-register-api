@@ -49,6 +49,7 @@ const UserSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      token: String,
     },
     role: {
       type: String,
@@ -85,14 +86,18 @@ UserSchema.pre('save', async function (next) {
 // This method generates a signed json web token and returns it.
 // using the JWT_SECRET and JWT_EXPIRE values from the .env file.
 UserSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign({ id: this._id, email: this.email }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRE,
-  });
+  return jwt.sign(
+    { id: this._id, email: this.email },
+    env.JWT_SECRET,
+    {
+      expiresIn: env.JWT_EXPIRE,
+    },
+  );
 };
 
 // Sign Public JWT and return
 // This method generates a public signed json web token and returns it.
-// using the JWT_PUBLIC_SECRET and JWT_EXPIRE values from the .env file.
+// using the JWT_SECRET_PUBLIC and JWT_EXPIRE values from the .env file.
 UserSchema.methods.getPublicSignedJwtToken = function () {
   return jwt.sign(
     {
@@ -100,10 +105,30 @@ UserSchema.methods.getPublicSignedJwtToken = function () {
       email: this.email,
       registered: this.registered,
       role: this.role,
+      type: 'public',
     },
-    env.JWT_PUBLIC_SECRET,
+    env.JWT_SECRET_PUBLIC,
     {
       expiresIn: env.JWT_EXPIRE,
+    },
+  );
+};
+
+// Sign a PUBLI JWT with a short expiration time
+// Used for inside an email to confirm registration
+// User clicks link in email, and is redirected to the app
+// This JWT is then checked to see if the user has registered
+// And if the registered token matches what is saved in the DB
+UserSchema.methods.getRegisteredJwtToken = function () {
+  return jwt.sign(
+    {
+      id: this._id,
+      email: this.email,
+      type: 'registration',
+    },
+    env.JWT_SECRET_PUBLIC,
+    {
+      expiresIn: env.JWT_EXPIRE_REGISTRATION,
     },
   );
 };
