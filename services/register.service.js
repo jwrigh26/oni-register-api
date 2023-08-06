@@ -26,8 +26,8 @@ const transporter = nodemailer.createTransport({
  */
 async function checkWhitelist(email, next) {
   try {
-  const foundInWhitelist = await WhitelistAccount.isWhitelisted(email);
-  return foundInWhitelist;
+    const foundInWhitelist = await WhitelistAccount.isWhitelisted(email);
+    return foundInWhitelist;
   } catch (err) {
     return next(new ErrorResponse('Unable to check whitelist', 401));
   }
@@ -84,7 +84,7 @@ async function createUser({ email, password }, next) {
 
 /**
  * GET SIGNED TOKEN FOR REGISTRATION
- * Gets a signed JWT token for the specified email address and updates the user's registration status with the token.
+ * Gets a signed JWT token for the specified email address.
  *
  * @param {string} email - The email address of the user.
  * @returns {Promise<string>} A Promise that resolves with the signed JWT token.
@@ -98,21 +98,67 @@ async function getRegistrationTokenByEmail(email, next) {
     console.log(message);
     return next(new ErrorResponse(message, 400));
   }
-  await User.updateOne({ _id: user._id }, { 'registration.token': token });
   return token;
 }
 
 /**
- * SEND REGISTRATION EMAIL PENDING
- * Sends a registration pending email to the specified email address.
+ * SEND REGISTRATION EMAIL CONFIRMATION
+ * Sends a registration confirmation email to the specified email address.
  *
  * @param {Object} registration - The registration object containing the email and registration status of the user. Registration is true by default.
  * @param {string} registration.email - The email address of the user.
- * @param {string} registration.token - The token that was previously created by calling: getRegistrationTokenByEmail.
+ * @param {string} registration.token - The registration token for the user.
  * @param {function} next - The next middleware function to call.
  */
 function sendRegistrationConfirmationEmail({ email, token }, next) {
-  // TODO: Send registration complete email
+  const registrationCompleteUrl = `${env.DEV_FRONTEND_URL}/registration/complete?token=${token}`;
+
+  const emailTemplateString = `
+    <mjml>
+      <mj-body>
+        <mj-container>
+          <mj-section>
+            <mj-column>
+              <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">Welcome to Onboarding!</mj-text>
+              <mj-text align="center" font-size="16px" color="#555555">${email},</mj-text>
+              <mj-text align="center" font-size="16px" color="#555555">
+                Your account has been successfully registered. Please click the button below to complete your registration.
+              </mj-text>
+              <mj-button href="${registrationCompleteUrl}" background-color="#007bff" color="#ffffff" font-size="16px" font-weight="bold" align="center">Complete Registration</mj-button>
+              <mj-divider border-color="#cccccc"></mj-divider>
+              <mj-text align="center" font-size="14px" color="#888888">
+                If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.
+              </mj-text>
+            </mj-column>
+          </mj-section>
+        </mj-container>
+      </mj-body>
+    </mjml>
+  `;
+  const emailText = `
+    Your account has been successfully registered. 
+    Please click the following link to complete your registration: ${registrationCompleteUrl}
+    If you have any questions or need assistance, please don't hesitate to contact us at support@${env.DEV_FRONTEND_URL}.
+  `;
+
+  const compileTemplate = mjml(emailTemplateString);
+  const htmlOutput = compileTemplate.html;
+
+  const mailOptions = {
+    from: `support@${env.DEV_FRONTEND_URL}`,
+    to: email,
+    subject: 'Registration confirmation - Onboarding',
+    text: emailText,
+    html: htmlOutput,
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log('Error sending email:', error);
+      return next(new ErrorResponse('Error sending email!', 400, error));
+    }
+    console.log('Email sent:', info.messageId);
+  });
 }
 
 /**
@@ -237,13 +283,17 @@ function sendRegistrationRequestToAdminEmail(email, next) {
  * UPDATE USER REGISTRATION
  * Updates a user's registration.
  *
- * @param {Object} registration - The registration object containing the email and registration status of the user. Registration is true by default.
+ * @param {Object} registration - The registration object containing the email and registration status of the user.
  * @param {string} registration.email - The email address of the user.
- * @param {boolean} [registration.registered=true] - The registration status of the user. Defaults to true.
+ * @param {string} [registration.token] - The registration token of the user.
+ * @param {boolean} [registration.registered] - The registration status of the user. Defaults to true.
  * @param {function} next - The next middleware function to call.
  * @returns {Promise<Object>} A Promise that resolves with the updated user object.
  */
-async function updateUserRegistration({ email, registered = true }, next) {
+async function updateUserRegistration(
+  { email, token, registered = true },
+  next,
+) {
   const date = new Date();
   let user;
   try {
@@ -253,6 +303,7 @@ async function updateUserRegistration({ email, registered = true }, next) {
         $set: {
           'registration.registered': registered,
           'registration.date': date,
+          'registration.token': token,
         },
       },
       { new: true },
@@ -282,9 +333,9 @@ module.exports = {
  * Or if whitelist is disabled and user is not already registered
  * and the admin APPROVES the user
  *
- * updateUserRegistration -- sets user.registration.registered to true
  * getRegistrationTokenByEmail -- makes a signed token with the user's email
- *                                and updates the user registration.token
+ * updateUserRegistration -- sets user.registration with the token and registered = true
+ *                           along with the current date
  *
  * sendRegistrationConfirmationEmail -- Takes email and token
  *

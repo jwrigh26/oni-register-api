@@ -6,6 +6,7 @@ const WhitelistAccountSchema = new mongoose.Schema(
       type: String,
       required: false,
       unique: true,
+      sparse: true, // only add if it exists
       match: [
         /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
         'Please add a valid email',
@@ -15,6 +16,7 @@ const WhitelistAccountSchema = new mongoose.Schema(
       type: String,
       required: false,
       unique: true,
+      sparse: true, // only add if it exists
     },
   },
   { timestamps: true },

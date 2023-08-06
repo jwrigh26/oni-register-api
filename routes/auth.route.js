@@ -88,17 +88,21 @@ router.post(
     // Check if email is in out whitelist to short circuit the process
     const isWhitelisted = await registerService.checkWhitelist(email, next);
 
+    let token = null;
+
     if (isWhitelisted) {
-      // Update the user account to be registered
-      // This will set the user.registration.registered to true
-      await registerService.updateUserRegistration({ email }, next);
       // Need to generate a token for registration confirmation
       // Make a signed JWT token with the email sigend by the public secret key
       // Side-effect: This will update the user object with a registration token
-      const token = await registerService.getRegistrationTokenByEmail(
+      token = await registerService.getRegistrationTokenByEmail(
         email,
         next,
       );
+
+      // Update the user account to be registered
+      // This will set the user.registration.registered to true
+      await registerService.updateUserRegistration({ email, token }, next);
+
       // Send the email to the user.
       // They will use this email token to confirm their registration
       // This will happen asynchronously to not block the request
@@ -117,6 +121,7 @@ router.post(
 
     authServices.sendTokenResponse(user, 201, res, {
       email: user.email,
+      token,
     });
   }),
 );
@@ -146,17 +151,18 @@ router.post(
       });
     }
 
-    // If the user is not registered let's register them
-    // Update the user account to be registered
-    // This will set the user.registration.registered to true
-    await registerService.updateUserRegistration({ email }, next);
     // Need to generate a token for registration confirmation
     // Make a signed JWT token with the email sigend by the public secret key
-    // Side-effect: This will update the user object with a registration token
     const token = await registerService.getRegistrationTokenByEmail(
       email,
       next,
     );
+
+    // If the user is not registered let's register them
+    // Update the user account to be registered
+    // This will set the user.registration.registered to true
+    await registerService.updateUserRegistration({ email, token }, next);
+
     // Send the email to the user.
     // They will use this email token to confirm their registration
     // This will happen asynchronously to not block the request
@@ -182,7 +188,6 @@ router.get(
     // Need to do some clean up here.
     // The token has already been removed.
     // Need to login and stuff.
-
     res.status(200).json({
       success: true,
       Greeting: `Hello Confirmed User: ${req?.user?.email}. Welcome from the server!`,
@@ -208,6 +213,5 @@ router.post(
     });
   }),
 );
-
 
 module.exports = router;
