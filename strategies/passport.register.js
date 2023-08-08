@@ -20,32 +20,33 @@ passport.use(
     try {
       // Extract the token from the URL query parameter
       const token = ExtractJwt.fromUrlQueryParameter('token')(req);
-      console.log(Object.keys(payload));
 
       // Find the user based on the payload's userID (you may need to adjust the field name depending on your User model)
-      const user = await User.findOne({ email: payload.email });
+      const user = await User.findOne({ 'registration.token': token });
 
       if (!user) {
         // If the user was not found
         // Send back null for error and false for user
         // To indicate that the authentication process failed
-        console.log('User not found');
         return done(null, false);
       }
 
-      // Check if the user has a registration object and registration is true
-      if (!user.registration.registered) {
-        console.log('User is not registered foo');
+      // Check if the user has a registration object and if the status is approved
+      if (user.registration.status === 'approved') {
+        console.log('User is already registered');
+      }
+
+      // Check if the user has a registration object and if the status is denied
+      if (user.registration.status === 'denied') {
+        console.log('User is denied registration');
+      }
+
+      // Check if the user has a registration object and registration is not pending
+      if (user.registration.status !== 'pending') {
+        console.log('User is not currently pending registration', user.registration.status);
         return done(null, false);
       }
 
-      // Compare the token from the URL query parameter with the token from the database
-      // If they match, then the user is authenticated
-      // If they don't match, then the user is not authenticated
-      if (token !== user?.registration?.token) {
-        console.log('Token does not match');
-        return done(null, false);
-      }
 
       // Remove the token from the user registration object
       user.registration.token = undefined;

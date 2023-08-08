@@ -42,8 +42,13 @@ const UserSchema = new mongoose.Schema(
     registration: {
       date: {
         type: Date,
-        defaul: null,
+        default: null,
         min: '2000-01-01',
+      },
+      status: {
+        type: String,
+        values: ['approved', 'denied', 'pending', null],
+        default: null,
       },
       registered: {
         type: Boolean,

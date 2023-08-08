@@ -95,7 +95,6 @@ async function getRegistrationTokenByEmail(email, next) {
   const token = user?.getRegisteredJwtToken();
   if (!token) {
     const message = 'Unable to get token';
-    console.log(message);
     return next(new ErrorResponse(message, 400));
   }
   return token;
@@ -116,22 +115,16 @@ function sendRegistrationConfirmationEmail({ email, token }, next) {
   const emailTemplateString = `
     <mjml>
       <mj-body>
-        <mj-container>
-          <mj-section>
-            <mj-column>
-              <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">Welcome to Onboarding!</mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">${email},</mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">
-                Your account has been successfully registered. Please click the button below to complete your registration.
-              </mj-text>
-              <mj-button href="${registrationCompleteUrl}" background-color="#007bff" color="#ffffff" font-size="16px" font-weight="bold" align="center">Complete Registration</mj-button>
-              <mj-divider border-color="#cccccc"></mj-divider>
-              <mj-text align="center" font-size="14px" color="#888888">
-                If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.
-              </mj-text>
-            </mj-column>
-          </mj-section>
-        </mj-container>
+        <mj-section>
+          <mj-column>
+            <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">Welcome to Onboarding!</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">${email},</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">Your account has been successfully registered. Please click the button below to complete your registration.</mj-text>
+            <mj-button href="${registrationCompleteUrl}" background-color="#007bff" color="#ffffff" font-size="16px" font-weight="bold" align="center">Complete Registration</mj-button>
+            <mj-divider border-color="#cccccc"></mj-divider>
+            <mj-text align="center" font-size="14px" color="#888888">If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.</mj-text>
+          </mj-column>
+        </mj-section>
       </mj-body>
     </mjml>
   `;
@@ -171,22 +164,15 @@ function sendRegistrationPendingEmail(email, next) {
   const emailTemplateString = `
     <mjml>
       <mj-body>
-        <mj-container>
-          <mj-section>
-            <mj-column>
-              <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">Welcome to Onboarding!</mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">${email},</mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">
-                Thank you for signing up with our website. Your account is currently in review by our admin team.
-                You will receive another email once your account is approved. We appreciate your patience.
-              </mj-text>
-              <mj-divider border-color="#cccccc"></mj-divider>
-              <mj-text align="center" font-size="14px" color="#888888">
-                If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.
-              </mj-text>
-            </mj-column>
-          </mj-section>
-        </mj-container>
+        <mj-section>
+          <mj-column>
+            <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">Welcome to Onboarding!</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">${email},</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">Thank you for signing up with our website. Your account is currently in review by our admin team. You will receive another email once your account is approved. We appreciate your patience.</mj-text>
+            <mj-divider border-color="#cccccc"></mj-divider>
+            <mj-text align="center" font-size="14px" color="#888888">If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.</mj-text>
+          </mj-column>
+        </mj-section>
       </mj-body>
     </mjml>
   `;
@@ -230,25 +216,17 @@ function sendRegistrationRequestToAdminEmail(email, next) {
   const emailTemplateString = `
     <mjml>
       <mj-body>
-        <mj-container>
-          <mj-section>
-            <mj-column>
-              <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">New User Registration Request</mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">
-                A new user has registered with the following email address:
-              </mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">${email}</mj-text>
-              <mj-text align="center" font-size="16px" color="#555555">
-                Please review their account and approve or reject the registration request.
-              </mj-text>
-              <mj-button href="${loginUrl}" align="center" font-size="16px" background-color="#007bff" color="#ffffff" padding="16px 32px" border-radius="4px">Go to Login</mj-button>
-              <mj-divider border-color="#cccccc"></mj-divider>
-              <mj-text align="center" font-size="14px" color="#888888">
-                If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.
-              </mj-text>
-            </mj-column>
-          </mj-section>
-        </mj-container>
+        <mj-section>
+          <mj-column>
+            <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">New User Registration Request</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">A new user has registered with the following email address:</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">${email}</mj-text>
+            <mj-text align="center" font-size="16px" color="#555555">Please review their account and approve or reject the registration request.</mj-text>
+            <mj-button href="${loginUrl}" align="center" font-size="16px" background-color="#007bff" color="#ffffff" padding="16px 32px" border-radius="4px">Go to Login</mj-button>
+            <mj-divider border-color="#cccccc"></mj-divider>
+            <mj-text align="center" font-size="14px" color="#888888">If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.</mj-text>
+          </mj-column>
+        </mj-section>
       </mj-body>
     </mjml>
   `;
@@ -286,14 +264,12 @@ function sendRegistrationRequestToAdminEmail(email, next) {
  * @param {Object} registration - The registration object containing the email and registration status of the user.
  * @param {string} registration.email - The email address of the user.
  * @param {string} [registration.token] - The registration token of the user.
- * @param {boolean} [registration.registered] - The registration status of the user. Defaults to true.
+ * @param {boolean} [registration.status] - The registration status of the user. Defaults to null.
+ *                                          If approved then the registered value is set to true.
  * @param {function} next - The next middleware function to call.
  * @returns {Promise<Object>} A Promise that resolves with the updated user object.
  */
-async function updateUserRegistration(
-  { email, token, registered = true },
-  next,
-) {
+async function updateUserRegistration({ email, token, status }, next) {
   const date = new Date();
   let user;
   try {
@@ -301,8 +277,9 @@ async function updateUserRegistration(
       { email },
       {
         $set: {
-          'registration.registered': registered,
+          'registration.registered': !!(status === 'approved'),
           'registration.date': date,
+          'registration.status': status,
           'registration.token': token,
         },
       },
@@ -317,6 +294,40 @@ async function updateUserRegistration(
   return user;
 }
 
+/**
+ * REGISTER USER
+ * Registers a new user by generating a registration token,
+ * updating the user's registration status to pending,
+ * and sending a registration confirmation email.
+ *
+ * @param {string} email - The email address of the user.
+ * @param {function} next - The next middleware function to call.
+ * @returns {Promise<string>} A Promise that resolves with the registration token.
+ */
+async function registerUser(email, next) {
+  // STEP #1
+  // Need to generate a token for registration confirmation
+  // Make a signed JWT token with the email sigend by the public secret key
+  console.log('Generating registration token...');
+  const token = await getRegistrationTokenByEmail(email, next);
+
+  // STEP #2
+  // If the user is not registered let's register them
+  // Update the user account to be registered
+  // This will set the user.registration.registered to true
+  console.log('Updating user registration...');
+  await updateUserRegistration({ email, token, status: 'pending' }, next);
+
+  // STEP #3
+  // Send the email to the user.
+  // They will use this email token to confirm their registration
+  // This will happen asynchronously to not block the request
+  console.log('Sending registration confirmation email...');
+  sendRegistrationConfirmationEmail({ email, token }, next);
+
+  return token;
+}
+
 module.exports = {
   checkWhitelist,
   checkUserRegistration,
@@ -326,6 +337,11 @@ module.exports = {
   sendRegistrationPendingEmail,
   sendRegistrationRequestToAdminEmail,
   updateUserRegistration,
+  // The main function to call to register a user
+  // it will getRegistrationTokenByEmail,
+  // updateUserRegistration,
+  // and sendRegistrationConfirmationEmail
+  registerUser,
 };
 
 /**
@@ -349,6 +365,9 @@ module.exports = {
  * If user is not registered then it returns a 400 error
  * If the token from the url doesn't match eht user.registraction.token then it returns a 400 error
  * If it passes all of this stuff then...
+ *
+ *
+ * TODO: Make registartion instead of registered. Change to status: 'pending' or 'approved' or 'rejected'
  *
  * Remove token from user registration object
  * Save the user

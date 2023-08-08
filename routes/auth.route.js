@@ -91,22 +91,13 @@ router.post(
     let token = null;
 
     if (isWhitelisted) {
-      // Need to generate a token for registration confirmation
-      // Make a signed JWT token with the email sigend by the public secret key
-      // Side-effect: This will update the user object with a registration token
-      token = await registerService.getRegistrationTokenByEmail(
-        email,
-        next,
-      );
-
-      // Update the user account to be registered
-      // This will set the user.registration.registered to true
-      await registerService.updateUserRegistration({ email, token }, next);
-
-      // Send the email to the user.
-      // They will use this email token to confirm their registration
-      // This will happen asynchronously to not block the request
-      registerService.sendRegistrationConfirmationEmail({ email, token }, next);
+      // Register the user
+      // It will call under the hood the register strategy
+      // 1. getRegistrationTokenByEmail
+      // 2. updateUserRegistration ( status: 'pending' )
+      // 3. sendRegistrationConfirmationEmail
+      console.log('User is whitelisted. Registering user.');
+      token = await registerService.registerUser(email, next);
     }
 
     // Check if email is in out whitelist
@@ -119,6 +110,7 @@ router.post(
       registerService.sendRegistrationRequestToAdminEmail(email, next);
     }
 
+    console.log('Sending response back to client.');
     authServices.sendTokenResponse(user, 201, res, {
       email: user.email,
       token,
@@ -151,22 +143,12 @@ router.post(
       });
     }
 
-    // Need to generate a token for registration confirmation
-    // Make a signed JWT token with the email sigend by the public secret key
-    const token = await registerService.getRegistrationTokenByEmail(
-      email,
-      next,
-    );
-
-    // If the user is not registered let's register them
-    // Update the user account to be registered
-    // This will set the user.registration.registered to true
-    await registerService.updateUserRegistration({ email, token }, next);
-
-    // Send the email to the user.
-    // They will use this email token to confirm their registration
-    // This will happen asynchronously to not block the request
-    registerService.sendRegistrationConfirmationEmail({ email, token }, next);
+    // Register the user
+    // It will call under the hood the register strategy
+    // 1. getRegistrationTokenByEmail
+    // 2. updateUserRegistration ( status: 'pending' )
+    // 3. sendRegistrationConfirmationEmail
+    const token = await registerService.registerUser(email, next);
 
     // Send a success response
     res.status(200).json({
@@ -178,21 +160,27 @@ router.post(
 );
 
 // REGISTER CONFIRM
-// @desc      As a user I use this to login after registration via url with token query param
+// @desc      As a user I use this to login after registration via url with token query param/.
+//            This is important and is the last stage of the registration process.
+//            It updates the user account to be registered by setting status to approved,
+//            and as a sid-effect it sets the user.registration.registered to true.
+//            Finaly, It redirects to the login page with a query param of register=confirmed
+//            Resets the token to null
 // @route     GET /api/v1/auth/register/confirm?token=TOKEN
 // @access    Public
 router.get(
   '/register/confirm',
   passport.authenticate('register', { session: false }),
-  asyncHandler(async (req, res) => {
-    // Need to do some clean up here.
-    // The token has already been removed.
-    // Need to login and stuff.
-    res.status(200).json({
-      success: true,
-      Greeting: `Hello Confirmed User: ${req?.user?.email}. Welcome from the server!`,
-      user: req.user,
-    });
+  asyncHandler(async (req, res, next) => {
+    // Update the user account to be registered
+    // This will set the user.registration.registered to true
+    console.log('Updating user registration to approved.');
+    await registerService.updateUserRegistration(
+      { email: req?.user?.email, token: null, status: 'approved' },
+      next,
+    );
+    console.log('Redirecting to login page.');
+    res.redirect(`${env.DEV_FRONTEND_URL}/login?register=confirmed`);
   }),
 );
 
