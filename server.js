@@ -21,6 +21,7 @@ const xss = require('xss-clean');
 require('./strategies/passport.jwt');
 require('./strategies/passport.google');
 require('./strategies/passport.register');
+require('./strategies/passport.resetpassword');
 
 
 // eslint-disable-next-line no-process-env

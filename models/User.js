@@ -33,11 +33,9 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // only add if it exists
     },
-    reset: {
-      token: String,
-      expires: Date,
-    },
-    // Used to check if user has registered. If false and no date, user has not registered
+    // JWT Token of type resetpassword
+    resetPasswordToken: String,
+    // Used to check if user has registered. If registered is false, user has not registered
     // and cannot access the app. They need to wait for a confirmation email.
     registration: {
       date: {
@@ -138,37 +136,31 @@ UserSchema.methods.getRegisteredJwtToken = function () {
   );
 };
 
+// Sign a PUBLI JWT with a short expiration time
+// Used for inside an email to confirm registration
+// User clicks link in email, and is redirected to the app
+// This JWT is then checked to see if the user has registered
+// And if the registered token matches what is saved in the DB
+UserSchema.methods.getResetPasswordJwtToken = function () {
+  return jwt.sign(
+    {
+      id: this._id,
+      email: this.email,
+      type: 'resetpassword',
+    },
+    env.JWT_SECRET_PUBLIC,
+    {
+      expiresIn: env.JWT_EXPIRE_REGISTRATION,
+    },
+  );
+};
+
 // Match user entered password to hashed password in database
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   const enteredPasswordHashed = await argon2.hash(enteredPassword);
   return await argon2.verify(enteredPasswordHashed, this.password);
 };
 
-// Make an invalid JWT Token
-UserSchema.methods.invalidateJWToken = function () {
-  return jwt.sign({ id: this._id }, env.JWT_SECRET, {
-    expiresIn: 0,
-  });
-};
-
-UserSchema.statics.matchResetToken = async function (resetToken) {
-  const tokenHash = generateResetHash(resetToken);
-  return await this.findOne({
-    resetPasswordToken: tokenHash,
-  });
-};
-
-// Generate and hash password token
-UserSchema.methods.generateResetPasswordToken = function () {
-  // Generate token
-  const resetToken = crypto.randomBytes(20).toString('hex');
-
-  // Hash token and set to resetPasswordToken field and expiration
-  this.resetPasswordToken = generateResetHash(resetToken);
-  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
-
-  return resetToken;
-};
 
 // Check if registered is set
 UserSchema.methods.isRegistered = (user) => {

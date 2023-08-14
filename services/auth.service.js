@@ -1,20 +1,32 @@
 const { env } = require('../constants');
 const { hasValue } = require('../helpers/utils');
+const nodemailer = require('nodemailer');
+const mjml = require('mjml');
 const User = require('../models/User');
 const ErrorResponse = require('../components/ErrorResponse');
+
+// Not a public method, so we don't need to export it
+// This is the mailer transport that will be used to send emails
+const transporter = nodemailer.createTransport({
+  host: env.SMTP_HOST,
+  port: env.SMTP_PORT,
+  secure: false,
+  auth: {
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASSWORD,
+  },
+});
 
 async function loginUser({ email, password }, next) {
   // Validate email & password
   if (!email || !password) {
-    return next(
-      new ErrorResponse('Please provide an email and password', 400),
-    );
+    return next(new ErrorResponse('Please provide an email and password', 400));
   }
 
-   // Check for user
-   const user = await User.findOne({ email }).select('+password');
+  // Check for user
+  const user = await User.findOne({ email }).select('+password');
 
-   if (!user) {
+  if (!user) {
     return next(new ErrorResponse('Invalid credentials', 401));
   }
 
@@ -27,6 +39,103 @@ async function loginUser({ email, password }, next) {
   }
 
   return user;
+}
+
+async function getResetPasswordTokenByEmail(email, next) {
+  const user = await User.findOne({ email }, { _id: 1, email: 1 });
+  const token = user?.getResetPasswordJwtToken();
+
+  if (!token) {
+    const message = 'Unable to get token';
+    return next(new ErrorResponse(message, 400));
+  }
+  return token;
+}
+
+async function updateUserResetPasswordToken({ email, token }, next) {
+  let user;
+  try {
+    user = await User.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          resetPasswordToken: token,
+        },
+      },
+      { new: true },
+    );
+  } catch (err) {
+    return next(new ErrorResponse('Unable to update user', 400));
+  }
+  return user;
+}
+
+async function sendResetPasswordEmail({ email, token }, next) {
+  const resetPasswordUrl = `${env.DEV_FRONTEND_URL}/resetpassword?token=${token}`;
+  const passwordResetEmailTemplate = `
+  <mjml>
+    <mj-body>
+      <mj-section>
+        <mj-column>
+          <mj-text align="center" font-size="24px" color="#333333" font-weight="bold">Password Reset Request</mj-text>
+          <mj-text align="center" font-size="16px" color="#555555">${email},</mj-text>
+          <mj-text align="center" font-size="16px" color="#555555">We have received a request to reset the password for your account. If you did not initiate this request, please disregard this email.</mj-text>
+          <mj-button href="${resetPasswordUrl}" background-color="#007bff" color="#ffffff" font-size="16px" font-weight="bold" align="center">Reset Password</mj-button>
+          <mj-divider border-color="#cccccc"></mj-divider>
+          <mj-text align="center" font-size="14px" color="#888888">If you did not request a password reset, no further action is required on your part.</mj-text>
+          <mj-text align="center" font-size="14px" color="#888888">If you have any questions or need assistance, please don't hesitate to contact our support team at <a href="mailto:support@${env.DEV_FRONTEND_URL}">support@${env.DEV_FRONTEND_URL}</a>.</mj-text>
+          <mj-text align="center" font-size="14px" color="#888888">Thank you,<br/>The Onboarding Team</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-body>
+  </mjml>
+`;
+
+  const passwordResetText = `
+    Password Reset Request
+
+    ${email},
+
+    We have received a request to reset the password for your account. If you did not initiate this request, please disregard this email.
+
+    To reset your password, please click the following link:
+    ${resetPasswordUrl}
+
+    This link will expire in [expiration period]. If you did not request a password reset, no further action is required on your part.
+
+    If you have any questions or need assistance, please don't hesitate to contact our support team at support@${env.DEV_FRONTEND_URL}.
+
+    Thank you,
+    The Onboarding Team
+`;
+
+  const compileTemplate = mjml(passwordResetEmailTemplate);
+  const htmlOutput = compileTemplate.html;
+
+  const mailOptions = {
+    from: `support@${env.DEV_FRONTEND_URL}`,
+    to: email,
+    subject: 'Registration confirmation - Onboarding',
+    text: passwordResetText,
+    html: htmlOutput,
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log('Error sending email:', error);
+      return next(new ErrorResponse('Error sending email!', 400, error));
+    }
+    console.log('Email sent:', info.messageId);
+  });
+}
+
+async function updatePassword(user, password, next) {
+  // Set new password
+  // user.password = password;
+  // user.resetPasswordToken = undefined;
+  // user.resetPasswordExpire = undefined;
+  // await user.save();
+  // return user;
 }
 
 /**
@@ -93,6 +202,9 @@ async function sendTokenResponse(user, statusCode, res, payload = {}) {
 }
 
 module.exports = {
+  getResetPasswordTokenByEmail,
+  updateUserResetPasswordToken,
+  sendResetPasswordEmail,
   loginUser,
   sendTokenResponse,
 };

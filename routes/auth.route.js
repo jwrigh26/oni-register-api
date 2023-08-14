@@ -1,6 +1,4 @@
 const { env } = require('../constants');
-const { hasValue } = require('../helpers/utils');
-const { sendEmailTest } = require('../helpers/email');
 const { csrf, csrfCheck } = require('../middleware/csrf');
 const { checkAdminRole } = require('../middleware/permissions');
 const asyncHandler = require('../middleware/async');
@@ -125,9 +123,9 @@ router.post(
 // @access   Private
 router.post(
   '/register/approve',
-  // passport.authenticate('jwt', { session: false }),
-  // csrfCheck,
-  // checkAdminRole,
+  passport.authenticate('jwt', { session: false }),
+  csrfCheck,
+  checkAdminRole,
   asyncHandler(async (req, res, next) => {
     const { email } = req.body;
     // Check if the user is already registered
@@ -184,6 +182,33 @@ router.get(
   }),
 );
 
+// ----------------------- PASSWORD RESET ROUTES ----------------------- //
+
+router.post('/forgotpassword', asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  const token = await authServices.getResetPasswordTokenByEmail(email, next);
+  await authServices.updateUserResetPasswordToken({email, token}, next);
+  authServices.sendResetPasswordEmail({email, token}, next);
+
+  res.status(200).json({
+    success: true,
+    email,
+    message: `Reset password email sent to ${email}`,
+    token,
+  });
+}));
+
+router.get(
+  '/resetpassword',
+  passport.authenticate('resetpassword', { session: false }),
+
+  asyncHandler(async (req, res) => {
+    const user = req.user;
+    // authServices.sendTokenResponse(user, 200, res);
+  }),
+);
+
+
 // ----------------------- USER ROUTES ----------------------- //
 
 // @desc      CSRF token request. This should be made after successfully logging in
@@ -201,5 +226,6 @@ router.post(
     });
   }),
 );
+
 
 module.exports = router;
