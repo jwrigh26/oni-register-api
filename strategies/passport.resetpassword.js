@@ -33,20 +33,12 @@ passport.use(
         return done(null, false);
       }
 
-      console.log({payload, user});
-
       if (!user) {
         // If the user was not found
         // Send back null for error and false for user
         // To indicate that the authentication process failed
         return done(null, false);
       }
-
-
-      // Remove the token from the user registration object
-      user.resetPasswordToken = undefined;
-      // Save the user
-      await user.save();
 
       /// If successful, send the user object
       return done(null, user);

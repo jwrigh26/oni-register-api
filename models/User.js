@@ -62,13 +62,6 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
-// --------- Helper methods used below --------- //
-
-// Used in matchResetToken and generateResetPasswordToken
-const generateResetHash = (resetToken) =>
-  crypto.createHash('sha256').update(resetToken).digest('hex');
-
 // ------------ UserSchema Hooks ------------ //
 
 // Pre save hook to hash password
@@ -78,6 +71,7 @@ UserSchema.pre('save', async function (next) {
     return next();
   }
 
+  console.log('Time to hash password');
   // Hash password with argon2 for security
   const passwordHashed = await argon2.hash(this.password);
   this.password = passwordHashed;
@@ -85,17 +79,24 @@ UserSchema.pre('save', async function (next) {
 
 // ------------ UserSchema Methods ------------ //
 
+// Match user entered password to hashed password in database
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+  // const enteredPasswordHashed = await argon2.hash(enteredPassword);
+  // console.log('enteredPasswordHashed', enteredPasswordHashed);
+  const isPasswordValid = await argon2.verify(
+    this.password,
+    enteredPassword,
+  );
+  return isPasswordValid;
+};
+
 // Sign JWT and return
 // This method generates a signed json web token and returns it.
 // using the JWT_SECRET and JWT_EXPIRE values from the .env file.
 UserSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign(
-    { id: this._id, email: this.email },
-    env.JWT_SECRET,
-    {
-      expiresIn: env.JWT_EXPIRE,
-    },
-  );
+  return jwt.sign({ id: this._id, email: this.email }, env.JWT_SECRET, {
+    expiresIn: env.JWT_EXPIRE,
+  });
 };
 
 // Sign Public JWT and return
@@ -153,12 +154,6 @@ UserSchema.methods.getResetPasswordJwtToken = function () {
       expiresIn: env.JWT_EXPIRE_REGISTRATION,
     },
   );
-};
-
-// Match user entered password to hashed password in database
-UserSchema.methods.matchPassword = async function (enteredPassword) {
-  const enteredPasswordHashed = await argon2.hash(enteredPassword);
-  return await argon2.verify(enteredPasswordHashed, this.password);
 };
 
 

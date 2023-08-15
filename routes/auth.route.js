@@ -184,19 +184,22 @@ router.get(
 
 // ----------------------- PASSWORD RESET ROUTES ----------------------- //
 
-router.post('/forgotpassword', asyncHandler(async (req, res, next) => {
-  const { email } = req.body;
-  const token = await authServices.getResetPasswordTokenByEmail(email, next);
-  await authServices.updateUserResetPasswordToken({email, token}, next);
-  authServices.sendResetPasswordEmail({email, token}, next);
+router.post(
+  '/forgotpassword',
+  asyncHandler(async (req, res, next) => {
+    const { email } = req.body;
+    const token = await authServices.getResetPasswordTokenByEmail(email, next);
+    await authServices.updateUserResetPasswordToken({ email, token }, next);
+    authServices.sendResetPasswordEmail({ email, token }, next);
 
-  res.status(200).json({
-    success: true,
-    email,
-    message: `Reset password email sent to ${email}`,
-    token,
-  });
-}));
+    res.status(200).json({
+      success: true,
+      email,
+      message: `Reset password email sent to ${email}`,
+      token,
+    });
+  }),
+);
 
 router.get(
   '/resetpassword',
@@ -204,10 +207,33 @@ router.get(
 
   asyncHandler(async (req, res) => {
     const user = req.user;
-    // authServices.sendTokenResponse(user, 200, res);
+    res.status(200).json({
+      success: true,
+      message: `Reset password now!`,
+      token: user.resetPasswordToken,
+    });
   }),
 );
 
+router.post(
+  '/resetpassword',
+  passport.authenticate('resetpassword', { session: false }),
+  asyncHandler(async (req, res) => {
+    const user = req.user;
+
+    // Remove the token from the user registration object
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    // Save the user
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Reset password success!`,
+      token: user.resetPasswordToken,
+    });
+  }),
+);
 
 // ----------------------- USER ROUTES ----------------------- //
 
@@ -226,6 +252,5 @@ router.post(
     });
   }),
 );
-
 
 module.exports = router;

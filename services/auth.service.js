@@ -31,7 +31,7 @@ async function loginUser({ email, password }, next) {
   }
 
   // Check if password matches
-  const isMatch = await user.matchPassword(user.password, password);
+  const isMatch = await user.matchPassword(password);
 
   if (!isMatch) {
     console.log('Invalid credentials', user.password, password);
